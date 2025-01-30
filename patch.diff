@@ -1,0 +1,200 @@
+Submodule mbed-os contains modified content
+diff --git a/mbed-os/storage/blockdevice/COMPONENT_DATAFLASH/source/DataFlashBlockDevice.cpp b/mbed-os/storage/blockdevice/COMPONENT_DATAFLASH/source/DataFlashBlockDevice.cpp
+index cddcc146c4..e42a0915ef 100644
+--- a/mbed-os/storage/blockdevice/COMPONENT_DATAFLASH/source/DataFlashBlockDevice.cpp
++++ b/mbed-os/storage/blockdevice/COMPONENT_DATAFLASH/source/DataFlashBlockDevice.cpp
+@@ -494,7 +494,7 @@ bd_size_t DataFlashBlockDevice::get_read_size() const
+ 
+ bd_size_t DataFlashBlockDevice::get_program_size() const
+ {
+-    DEBUG_PRINTF("program size: %d\r\n", DATAFLASH_PROG_SIZE);
++    printf("program size: %d\r\n", DATAFLASH_PROG_SIZE);
+ 
+     return DATAFLASH_PROG_SIZE;
+ }
+diff --git a/mbed-os/targets/TARGET_Maxim/TARGET_MAX32630/CMakeLists.txt b/mbed-os/targets/TARGET_Maxim/TARGET_MAX32630/CMakeLists.txt
+index 1adf3612cc..c3f7c338b0 100644
+--- a/mbed-os/targets/TARGET_Maxim/TARGET_MAX32630/CMakeLists.txt
++++ b/mbed-os/targets/TARGET_Maxim/TARGET_MAX32630/CMakeLists.txt
+@@ -17,6 +17,8 @@ elseif(${MBED_TOOLCHAIN} STREQUAL "GCC_ARM")
+     set(LIB_EXACT_LE TOOLCHAIN_GCC_ARM/libexactLE.a)
+ endif()
+ 
++set(PYOCD_UPLOAD_ENABLED TRUE)
++
+ add_library(mbed-max32630 INTERFACE)
+ 
+ mbed_set_linker_script(mbed-max32630 ${CMAKE_CURRENT_SOURCE_DIR}/${LINKER_FILE})
+@@ -43,7 +45,8 @@ target_sources(mbed-max32630
+         sleep.c
+         spi_api.c
+         us_ticker.c
+-
++        flash_api.c
++        
+         device/device_nvic.c
+         device/system_max3263x.c
+ 
+diff --git a/mbed-os/targets/TARGET_Maxim/TARGET_MAX32630/device/TOOLCHAIN_GCC_ARM/max3263x.ld b/mbed-os/targets/TARGET_Maxim/TARGET_MAX32630/device/TOOLCHAIN_GCC_ARM/max3263x.ld
+index e6652dc5ac..615be95f78 100644
+--- a/mbed-os/targets/TARGET_Maxim/TARGET_MAX32630/device/TOOLCHAIN_GCC_ARM/max3263x.ld
++++ b/mbed-os/targets/TARGET_Maxim/TARGET_MAX32630/device/TOOLCHAIN_GCC_ARM/max3263x.ld
+@@ -39,7 +39,7 @@ STACK_SIZE = MBED_CONF_TARGET_BOOT_STACK_SIZE;
+ 
+ MEMORY
+ {
+-    FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 0x00200000
++    FLASH (rx) : ORIGIN = MBED_CONFIGURED_ROM_BANK_IROM1_START, LENGTH = 0x20000
+     RAM  (rwx) : ORIGIN = 0x20000000, LENGTH = 0x00080000
+ }
+ 
+diff --git a/mbed-os/targets/TARGET_Maxim/TARGET_MAX32630/objects.h b/mbed-os/targets/TARGET_Maxim/TARGET_MAX32630/objects.h
+index 32ae81c294..ad00a8b0b2 100644
+--- a/mbed-os/targets/TARGET_Maxim/TARGET_MAX32630/objects.h
++++ b/mbed-os/targets/TARGET_Maxim/TARGET_MAX32630/objects.h
+@@ -52,6 +52,10 @@
+ extern "C" {
+ #endif
+ 
++struct flash_s {
++    uint8_t notused;
++};
++
+ struct port_s {
+     PortName port;
+     uint32_t mask;
+diff --git a/mbed-os/targets/targets.json5 b/mbed-os/targets/targets.json5
+index 3e91b01137..190128609b 100644
+--- a/mbed-os/targets/targets.json5
++++ b/mbed-os/targets/targets.json5
+@@ -6528,7 +6528,8 @@
+             "USTICKER",
+             "MPU",
+             "SLEEP",
+-            "USBDEVICE"
++            "USBDEVICE",
++            "FLASH"
+         ],
+         "detect_code": [
+             "0409"
+Submodule mcuboot contains modified content
+diff --git a/mcuboot/boot/bootutil/src/bootutil_misc.c b/mcuboot/boot/bootutil/src/bootutil_misc.c
+index 56859d51..9be1d905 100644
+--- a/mcuboot/boot/bootutil/src/bootutil_misc.c
++++ b/mcuboot/boot/bootutil/src/bootutil_misc.c
+@@ -120,18 +120,21 @@ boot_trailer_info_sz(void)
+ static inline uint32_t
+ boot_status_entry_sz(uint32_t min_write_sz)
+ {
++    BOOT_LOG_WRN("state count %d, min_write %d",BOOT_STATUS_STATE_COUNT, min_write_sz);
+     return BOOT_STATUS_STATE_COUNT * min_write_sz;
+ }
+ 
+ uint32_t
+ boot_status_sz(uint32_t min_write_sz)
+ {
++    BOOT_LOG_WRN("Max entries %d",BOOT_STATUS_MAX_ENTRIES);
+     return BOOT_STATUS_MAX_ENTRIES * boot_status_entry_sz(min_write_sz);
+ }
+ 
+ uint32_t
+ boot_trailer_sz(uint32_t min_write_sz)
+ {
++    BOOT_LOG_WRN("trailer info %d",boot_trailer_info_sz());
+     return boot_status_sz(min_write_sz) + boot_trailer_info_sz();
+ }
+ 
+@@ -175,13 +178,16 @@ boot_status_off(const struct flash_area *fap)
+ #if MCUBOOT_SWAP_USING_SCRATCH
+     if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
+         off_from_end = boot_scratch_trailer_sz(elem_sz);
++        BOOT_LOG_WRN("usingscratch");
+     } else {
++        BOOT_LOG_WRN("usingscratch failed %d", fap->fa_id);
+ #endif
+         off_from_end = boot_trailer_sz(elem_sz);
++        BOOT_LOG_WRN("not using scratch, %d",elem_sz);
+ #if MCUBOOT_SWAP_USING_SCRATCH
+     }
+ #endif
+-
++    BOOT_LOG_WRN("off %d <= Get %d", off_from_end, flash_area_get_size(fap));
+     assert(off_from_end <= flash_area_get_size(fap));
+     return flash_area_get_size(fap) - off_from_end;
+ }
+diff --git a/mcuboot/boot/bootutil/src/swap_move.c b/mcuboot/boot/bootutil/src/swap_move.c
+index b124ff89..91f253f2 100644
+--- a/mcuboot/boot/bootutil/src/swap_move.c
++++ b/mcuboot/boot/bootutil/src/swap_move.c
+@@ -279,7 +279,7 @@ boot_slots_compatible(struct boot_loader_state *state)
+                      (int)(num_usable_sectors_pri - 1));
+         return 0;
+     } else if (num_sectors_pri > BOOT_MAX_IMG_SECTORS) {
+-        BOOT_LOG_WRN("Cannot upgrade: more sectors than allowed");
++        BOOT_LOG_WRN("Cannot upgrade: more sectors than allowed. has %d, %d max sectors",(int)num_sectors_pri, (int)BOOT_MAX_IMG_SECTORS);
+         return 0;
+     }
+ 
+diff --git a/mcuboot/boot/bootutil/src/swap_scratch.c b/mcuboot/boot/bootutil/src/swap_scratch.c
+index f6010912..b449b4eb 100644
+--- a/mcuboot/boot/bootutil/src/swap_scratch.c
++++ b/mcuboot/boot/bootutil/src/swap_scratch.c
+@@ -155,7 +155,7 @@ boot_slots_compatible(struct boot_loader_state *state)
+     num_sectors_secondary = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT);
+     if ((num_sectors_primary > BOOT_MAX_IMG_SECTORS) ||
+         (num_sectors_secondary > BOOT_MAX_IMG_SECTORS)) {
+-        BOOT_LOG_WRN("Cannot upgrade: more sectors than allowed");
++        BOOT_LOG_WRN("Cannot upgrade: more sectors than allowed. has %d , %d, %d max",(int)num_sectors_primary,(int)num_sectors_secondary, (int)BOOT_MAX_IMG_SECTORS);
+         return 0;
+     }
+ 
+diff --git a/mcuboot/boot/mbed/mbed_lib.json b/mcuboot/boot/mbed/mbed_lib.json
+index f7c7ff14..6ce30556 100644
+--- a/mcuboot/boot/mbed/mbed_lib.json
++++ b/mcuboot/boot/mbed/mbed_lib.json
+@@ -39,21 +39,21 @@
+         "signature-algorithm": {
+             "help": "The algorithm used for digital signing.",
+             "macro_name": "MCUBOOT_SIGNATURE_ALGORITHM",
+-            "required": true,
++            "required": false,
+             "accepted_values": ["SIGNATURE_TYPE_RSA", "SIGNATURE_TYPE_EC256", "SIGNATURE_TYPE_ED25519", "SIGNATURE_TYPE_NONE"],
+-            "value": "SIGNATURE_TYPE_RSA"
++            "value": "SIGNATURE_TYPE_NONE"
+         },
+         "rsa-signature-length": {
+             "help": "If RSA is used for signature algorithm, this specifies the length.",
+             "macro_name": "MCUBOOT_RSA_SIGNATURE_LENGTH",
+-            "required": true,
++            "required": false,
+             "accepted_values": [2048, 3072],
+             "value": 2048
+         },
+         "crypto-backend": {
+             "help": "The crypto library backend. NOTE: TinyCrypt is currently only supported with GCC for Mbed-OS builds.",
+             "macro_name": "MCUBOOT_CRYPTO_BACKEND",
+-            "required": true,
++            "required": false,
+             "accepted_values": ["MBEDTLS", "TINYCRYPT"],
+             "value": "MBEDTLS"
+         },
+diff --git a/mcuboot/boot/mbed/src/flash_map_backend.cpp b/mcuboot/boot/mbed/src/flash_map_backend.cpp
+index d673e503..61059f80 100644
+--- a/mcuboot/boot/mbed/src/flash_map_backend.cpp
++++ b/mcuboot/boot/mbed/src/flash_map_backend.cpp
+@@ -29,6 +29,7 @@
+ #include "mcuboot_config/mcuboot_logging.h"
+ 
+ #include "bootutil_priv.h"
++#include <cstdio>
+ 
+ #define FLASH_DEVICE_INTERNAL_FLASH 0
+ #define FLASH_AREAS 3
+@@ -201,6 +202,7 @@ int flash_area_erase(const struct flash_area* fap, uint32_t off, uint32_t len) {
+ 
+ uint32_t flash_area_align(const struct flash_area* fap) {
+     mbed::BlockDevice* bd = flash_map_bd[fap->fa_id];
++    printf("%d\n",bd->get_program_size());
+     return bd->get_program_size();
+ }
+ 
