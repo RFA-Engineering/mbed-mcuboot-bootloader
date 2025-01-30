@@ -149,6 +149,61 @@
             "mcuboot.scratch-size": "0x40000",
             "mcuboot.max-img-sectors": "0x180",
             "mcuboot.read-granularity": 1
+        },
+
+        "MAX32630FTHR": {
+            "target.restrict_size": "0x20000",
+            "target.components_add": ["FLASHIAP"],
+            "mcuboot.primary-slot-address": "0x20000",
+            "mcuboot.slot-size": "0xE0000",
+            // use flash for secondary slot
+            "secondary-slot-in-flash": true,
+            "secondary-slot-flash-start-addr": "0x100000",
+    
+            "mcuboot.scratch-address": "0x1E0000",
+            "mcuboot.scratch-size": "0x20000",
+
+            "mcuboot.read-granularity": "32",
+
+            "mcuboot.max-img-sectors": "112",
+            "mcuboot.flash-block-size": "0x2000",
+            "memory_banks": {
+                "IROM1": {
+                // Internal flash bank.  Size 2M, start address 0x08000000
+                   "access": {
+                         "execute": true,
+                         "non_secure": false,
+                        "non_secure_callable": false,
+                         "peripheral": false,
+                         "read": true,
+                         "secure": false,
+                         "write": false
+                      },
+                      "default": true,
+                     "size": 0x20000,
+                    "start": 0x00000000,
+                     "startup": true
+                },
+
+                // Internal RAM bank 1.  Size 512KB, start address 0x20000000.
+                // Note: Important to list this one first, because the bank listed first will become bank 0, and this
+                // target has a legacy linker script that expects that this bank is bank 0 instead of requesting it by name.
+                "IRAM1": {
+                  "access": {
+                         "execute": false,
+                         "non_secure": false,
+                         "non_secure_callable": false,
+                         "peripheral": false,
+                         "read": true,
+                         "secure": false,
+                         "write": true
+                     },
+                     "default": true,
+                     "size": 0x80000,
+                     "start": 0x20000000,
+                     "startup": false
+                }
+            }
         }
     }
 }

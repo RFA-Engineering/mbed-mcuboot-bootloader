@@ -10,6 +10,7 @@
 #include "SlicingBlockDevice.h"
 #include "FlashIAPBlockDevice.h"
 #include "BufferedBlockDevice.h"
+#define DEBUG_STDIO 1
 
 #if MBED_CONF_APP_SECONDARY_SLOT_IN_FLASH
 

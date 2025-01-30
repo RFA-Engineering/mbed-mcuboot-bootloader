@@ -21,7 +21,8 @@ add_executable(${CMAKE_PROJECT_NAME} ${MBED_MCUBOOT_BOOTLOADER_SOURCES})
 target_link_libraries(${CMAKE_PROJECT_NAME}
 	mbed-baremetal
 	mbed-storage
-	mbed-mcuboot)
+	mbed-mcuboot
+	mbed-storage-flashiap)
 mbed_set_post_build(${CMAKE_PROJECT_NAME})
 
 mbed_finalize_build()
