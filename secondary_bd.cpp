@@ -10,6 +10,8 @@
 #include "SlicingBlockDevice.h"
 #include "FlashIAPBlockDevice.h"
 #include "BufferedBlockDevice.h"
+#include <cstdio>
+#define DEBUG_STDIO 1
 
 #if MBED_CONF_APP_SECONDARY_SLOT_IN_FLASH
 
@@ -17,6 +19,7 @@ mbed::BlockDevice* get_secondary_bd(void) {
 
     // Use FlashIAP for the secondary BD.
     static FlashIAPBlockDevice flashBD(MBED_CONF_APP_SECONDARY_SLOT_FLASH_START_ADDR, MCUBOOT_SLOT_SIZE);
+    printf("tst");
     return &flashBD;
 }
 

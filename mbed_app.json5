@@ -149,6 +149,28 @@
             "mcuboot.scratch-size": "0x40000",
             "mcuboot.max-img-sectors": "0x180",
             "mcuboot.read-granularity": 1
+        },
+
+        "MAX32630FTHR": {
+            "target.memory_bank_config": {
+                "IROM1": {
+                    "size": 0x20000
+                }
+            },
+            "target.restrict_size": "0x20000",
+            "target.components_add": ["FLASHIAP"],
+            "mcuboot.primary-slot-address": "0x20000",
+            "mcuboot.slot-size": "0xE0000",
+            // use flash for secondary slot
+            "secondary-slot-in-flash": true,
+            "secondary-slot-flash-start-addr": "0x100000",
+    
+            "mcuboot.scratch-address": "0x1E0000",
+            "mcuboot.scratch-size": "0x20000",
+
+            "mcuboot.max-img-sectors": "112",
+            "mcuboot.flash-block-size": "0x2000",
+            "mcuboot.read-granularity": 1
         }
     }
 }
