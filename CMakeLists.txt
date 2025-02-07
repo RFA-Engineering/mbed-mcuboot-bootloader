@@ -24,5 +24,3 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 	mbed-mcuboot
 	mbed-storage-flashiap)
 mbed_set_post_build(${CMAKE_PROJECT_NAME})
-
-mbed_finalize_build()
